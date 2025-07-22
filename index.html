@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Simple Pong Game</title>
+    <title>Pong Game</title>
     <style>
         body {
             background: #111;
@@ -22,6 +22,8 @@
             justify-content: center;
             align-items: center;
             height: 80vh;
+            flex-direction: column;
+            gap: 10px;
         }
 
         #pongCanvas {
@@ -30,17 +32,58 @@
             border: 3px solid #00ff99;
             display: block;
         }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        button,
+        select {
+            padding: 8px 16px;
+            font-size: 16px;
+            background: #00ff99;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #111;
+        }
+
+        button:hover,
+        select:hover {
+            background: #00cc77;
+        }
+
+        #status {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 
 <body>
-    <h1>Simple Pong Game</h1>
+    <h1>Pong Game</h1>
     <div id="game-container">
+        <div id="status">Click Start to Play</div>
+        <div id="controls">
+            <button id="startPause">Start</button>
+            <button id="reset">Reset Score</button>
+            <select id="difficulty">
+                <option value="0.5">Easy</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.5">Hard</option>
+            </select>
+        </div>
         <canvas id="pongCanvas" width="800" height="400"></canvas>
     </div>
     <script>
         const canvas = document.getElementById('pongCanvas');
         const ctx = canvas.getContext('2d');
+        const startPauseBtn = document.getElementById('startPause');
+        const resetBtn = document.getElementById('reset');
+        const difficultySelect = document.getElementById('difficulty');
+        const statusText = document.getElementById('status');
 
         // Game objects
         const paddleWidth = 12, paddleHeight = 80;
@@ -49,17 +92,47 @@
         const rightPaddle = { x: canvas.width - 20 - paddleWidth, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, speed: 5 };
         const ball = { x: canvas.width / 2, y: canvas.height / 2, vx: 5, vy: 3 };
 
-        // Score
+        // Score and game state
         let leftScore = 0, rightScore = 0;
+        let isPlaying = false;
+        let animationFrameId;
+        let difficulty = 1;
+
+        // Sound effects
+        const paddleHitSound = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
+        const scoreSound = new Audio('https://www.soundjay.com/buttons/beep-02.mp3');
+        const wallHitSound = new Audio('https://www.soundjay.com/buttons/beep-03.mp3');
 
         // Mouse control for left paddle
         canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseY = e.clientY - rect.top;
-            leftPaddle.y = mouseY - paddleHeight / 2;
-            // Clamp paddle within canvas
-            if (leftPaddle.y < 0) leftPaddle.y = 0;
-            if (leftPaddle.y + paddleHeight > canvas.height) leftPaddle.y = canvas.height - paddleHeight;
+            if (isPlaying) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseY = e.clientY - rect.top;
+                leftPaddle.y = mouseY - paddleHeight / 2;
+                if (leftPaddle.y < 0) leftPaddle.y = 0;
+                if (leftPaddle.y + paddleHeight > canvas.height) leftPaddle.y = canvas.height - paddleHeight;
+            }
+        });
+
+        // Control buttons
+        startPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            startPauseBtn.textContent = isPlaying ? 'Pause' : 'Start';
+            statusText.textContent = isPlaying ? 'Playing' : 'Paused';
+            if (isPlaying) gameLoop();
+            else cancelAnimationFrame(animationFrameId);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            leftScore = 0;
+            rightScore = 0;
+            resetBall();
+            draw();
+        });
+
+        difficultySelect.addEventListener('change', () => {
+            difficulty = parseFloat(difficultySelect.value);
+            rightPaddle.speed = 5 * difficulty;
         });
 
         function drawRect(x, y, w, h, color) {
@@ -83,11 +156,13 @@
         function resetBall() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.vx = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 2);
-            ball.vy = (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3);
+            ball.vx = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 2) * difficulty;
+            ball.vy = (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3) * difficulty;
         }
 
         function update() {
+            if (!isPlaying) return;
+
             // Ball movement
             ball.x += ball.vx;
             ball.y += ball.vy;
@@ -96,10 +171,12 @@
             if (ball.y - ballRadius < 0) {
                 ball.y = ballRadius;
                 ball.vy *= -1;
+                wallHitSound.play();
             }
             if (ball.y + ballRadius > canvas.height) {
                 ball.y = canvas.height - ballRadius;
                 ball.vy *= -1;
+                wallHitSound.play();
             }
 
             // Left paddle collision
@@ -109,10 +186,10 @@
                 ball.y < leftPaddle.y + leftPaddle.height
             ) {
                 ball.x = leftPaddle.x + leftPaddle.width + ballRadius;
-                ball.vx *= -1.05; // Speed up slightly
-                // Add some vertical randomness based on impact location
+                ball.vx *= -1.05;
                 let impact = ((ball.y - leftPaddle.y) - paddleHeight / 2) / (paddleHeight / 2);
                 ball.vy += impact * 2;
+                paddleHitSound.play();
             }
 
             // Right paddle collision
@@ -122,29 +199,31 @@
                 ball.y < rightPaddle.y + rightPaddle.height
             ) {
                 ball.x = rightPaddle.x - ballRadius;
-                ball.vx *= -1.05; // Speed up slightly
+                ball.vx *= -1.05;
                 let impact = ((ball.y - rightPaddle.y) - paddleHeight / 2) / (paddleHeight / 2);
                 ball.vy += impact * 2;
+                paddleHitSound.play();
             }
 
             // Score logic
             if (ball.x < 0) {
                 rightScore++;
+                scoreSound.play();
                 resetBall();
             }
             if (ball.x > canvas.width) {
                 leftScore++;
+                scoreSound.play();
                 resetBall();
             }
 
-            // AI paddle movement (simple tracking)
+            // AI paddle movement
             let target = ball.y - paddleHeight / 2;
             if (rightPaddle.y + paddleHeight / 2 < ball.y - 8) {
                 rightPaddle.y += rightPaddle.speed;
             } else if (rightPaddle.y + paddleHeight / 2 > ball.y + 8) {
                 rightPaddle.y -= rightPaddle.speed;
             }
-            // Clamp AI paddle
             if (rightPaddle.y < 0) rightPaddle.y = 0;
             if (rightPaddle.y + paddleHeight > canvas.height) rightPaddle.y = canvas.height - paddleHeight;
         }
@@ -169,12 +248,12 @@
         function gameLoop() {
             update();
             draw();
-            requestAnimationFrame(gameLoop);
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
 
-        // Start game
+        // Initialize
         resetBall();
-        gameLoop();
+        draw();
     </script>
 </body>
 
