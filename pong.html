@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Online Pong</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./pong.css">
+</head>
+
+<body class="flex flex-col items-center justify-center">
+
+    <!-- Lobby: Create or Join a Game -->
+    <div id="lobby" class="w-full max-w-md p-8 flex flex-col items-center justify-center text-center">
+        <h1 class="text-5xl mb-8">Online Pong</h1>
+        <div class="w-full">
+            <button id="createGameBtn" class="btn w-full py-3 rounded-lg font-bold text-lg mb-4">Create New
+                Game</button>
+        </div>
+        <div class="text-gray-400 my-4">OR</div>
+        <div class="w-full">
+            <input type="text" id="gameIdInput" placeholder="Enter Game ID"
+                class="input-field w-full p-3 rounded-lg text-center mb-2">
+            <button id="joinGameBtn" class="btn btn-secondary w-full py-3 rounded-lg font-bold text-lg">Join
+                Game</button>
+        </div>
+        <p id="lobbyError" class="text-red-500 mt-4 h-4"></p>
+    </div>
+
+    <!-- Game Area -->
+    <div id="game-area" class="hidden w-full h-full flex-col items-center justify-center p-4">
+        <div class="mb-2 text-center">
+            <p class="text-lg">Game ID: <span id="gameIdDisplay"
+                    class="font-bold text-yellow-400 cursor-pointer"></span></p>
+            <p id="waitingMessage" class="text-green-400">Waiting for opponent...</p>
+        </div>
+        <div class="mb-2 text-center" id="score">0 - 0</div>
+        <div id="game-container" class="relative w-full max-w-4xl aspect-[4/3]">
+            <canvas id="pongCanvas"></canvas>
+        </div>
+    </div>
+
+    <script src="./pong.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,57 @@
+body {
+  font-family: "Press Start 2P", cursive;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  overflow: hidden;
+  height: 100vh;
+}
+
+canvas {
+  background-color: #000;
+  display: block;
+  touch-action: none;
+  border-radius: 0.5rem;
+  border: 4px solid #4a4a4a;
+}
+
+.input-field {
+  background-color: #333;
+  border: 2px solid #555;
+  color: white;
+}
+
+.btn {
+  background-color: #4f46e5;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: #4338ca;
+}
+
+.btn-secondary {
+  background-color: #555;
+}
+
+.btn-secondary:hover {
+  background-color: #444;
+}
+
+#lobby,
+#game-area {
+  height: 100vh;
+}
+
+#game-container {
+  width: 800px; /* Set a default width */
+  height: 600px; /* Set a default height */
+  margin: 0 auto; /* Center the container */
+}
+
+#game-area.hidden {
+  display: none;
+}
+#game-area {
+  display: block;
+}
