@@ -43,7 +43,6 @@ async def broadcast_to_room(game_id, message):
         room = GAME_ROOMS[game_id]
         active_clients = [client for client in room["players"].keys()]
         if active_clients:
-            logging.info(f"Broadcasting to {len(active_clients)} clients in {game_id}: {message}")
             tasks = [asyncio.create_task(client.send(message)) for client in active_clients]
             await asyncio.wait(tasks)
 
@@ -83,9 +82,6 @@ async def game_loop_for_room(game_id):
             state["score"]["player1"] += 1
             reset_ball(state)
 
-        # Log state before serialization
-        logging.info(f"Game {game_id} state before serialization: {state}")
-
         # Remove non-serializable fields before sending
         state_to_send = {
             "ball": state["ball"],
@@ -94,7 +90,6 @@ async def game_loop_for_room(game_id):
             "ball_speed": state["ball_speed"]
         }
         message = json.dumps({"type": "update_state", "state": state_to_send})
-        logging.info(f"Sending message: {message}")
 
         # Kirim update ke room
         await broadcast_to_room(game_id, message)
@@ -106,7 +101,6 @@ def reset_ball(state):
     state["ball"] = {"x": WIDTH / 2, "y": HEIGHT / 2}
     state["ball_speed"]["x"] = 5 if state["ball_speed"]["x"] > 0 else -5
     state["ball_speed"]["y"] = 5 if state["ball_speed"]["y"] > 0 else -5
-    logging.info(f"Ball reset: speed={state['ball_speed']}") # Debug log
 
 # --- Handler Utama (Dispatcher) ---
 async def handler(websocket):
@@ -159,11 +153,16 @@ async def handler(websocket):
                     player_id = room["players"].get(websocket)
                     if player_id:
                         paddle = room["paddles"][player_id]
+                        y_position = event.get("y")
                         direction = event.get("direction")
-                        logging.info(f"Player {player_id} in {game_id} moved {direction}") # Debug log
-                        if direction == "up" and paddle["y"] > 0:
+                        if isinstance(y_position, (int, float)):
+                            # Mouse control: set paddle position directly
+                            paddle["y"] = max(0, min(y_position, HEIGHT - PADDLE_HEIGHT))
+                        elif direction == "up" and paddle["y"] > 0:
+                            # Keyboard control: move up
                             paddle["y"] -= 30
                         elif direction == "down" and paddle["y"] < HEIGHT - PADDLE_HEIGHT:
+                            # Keyboard control: move down
                             paddle["y"] += 30
                         
     except ConnectionClosed:

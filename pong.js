@@ -18,17 +18,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // --- Event Listeners WebSocket ---
     websocket.onmessage = ({ data }) => {
+      lobbyError.textContent = ""; // Clear any previous errors
       const event = JSON.parse(data);
       handleServerMessage(event);
     };
 
     websocket.onclose = () => {
-      console.log("Disconnected. Attempting to reconnect...");
+      lobbyError.textContent = "Disconnected. Attempting to reconnect...";
       setTimeout(connectWebSocket, 2000); // Coba konek lagi setelah 2 detik
     };
 
     websocket.onerror = (error) => {
-      console.error("WebSocket Error:", error);
       lobbyError.textContent = "Cannot connect to server.";
     };
   }
@@ -51,8 +51,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const containerWidth = container.clientWidth || 800; // Fallback to 800px
     const containerHeight = container.clientHeight || 600; // Fallback to 600px
 
-    console.log(`Container size: ${containerWidth}x${containerHeight}`);
-
     let newWidth = containerWidth;
     let newHeight = newWidth / aspectRatio;
 
@@ -63,15 +61,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     canvas.width = newWidth;
     canvas.height = newHeight;
-    console.log(`Canvas resized to: ${canvas.width}x${canvas.height}`);
   }
 
   // --- Penanganan Pesan Server ---
   function handleServerMessage(event) {
-    console.log("Raw event data:", event); // Log raw data
     try {
       const parsedEvent = event;
-      console.log("Parsed event:", parsedEvent);
       switch (parsedEvent.type) {
         case "game_created":
           gameIdDisplay.textContent = parsedEvent.gameId;
@@ -84,10 +79,8 @@ window.addEventListener("DOMContentLoaded", () => {
           break;
         case "game_start":
           waitingMessage.style.display = "none";
-          console.log("Game started!");
           break;
         case "update_state":
-          console.log("Updating state:", parsedEvent.state);
           draw(parsedEvent.state);
           break;
         case "error":
@@ -110,22 +103,6 @@ window.addEventListener("DOMContentLoaded", () => {
   function draw(state) {
     const scaleX = canvas.width / 800;
     const scaleY = canvas.height / 600;
-
-    console.log(`Canvas size: ${canvas.width}x${canvas.height}`);
-    console.log(`Scale factors: x=${scaleX}, y=${scaleY}`);
-    console.log(
-      `Ball position: ${state.ball.x * scaleX}, ${state.ball.y * scaleY}`
-    );
-    console.log(
-      `Paddle 1: ${state.paddles.player1.x * scaleX}, ${
-        state.paddles.player1.y * scaleY
-      }`
-    );
-    console.log(
-      `Paddle 2: ${state.paddles.player2.x * scaleX}, ${
-        state.paddles.player2.y * scaleY
-      }`
-    );
 
     if (!ctx) {
       console.error("Canvas context is not available");
@@ -184,19 +161,49 @@ window.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("keydown", (event) => {
     let direction = null;
-    if (event.key === "w" || event.key === "W" || event.key === "ArrowUp")
+    if (
+      event.key === "w" ||
+      event.key === "W" ||
+      event.key === "j" ||
+      event.key === "J" ||
+      event.key === "ArrowUp"
+    )
       direction = "up";
     else if (
       event.key === "s" ||
       event.key === "S" ||
+      event.key === "l" ||
+      event.key === "L" ||
       event.key === "ArrowDown"
     )
       direction = "down";
 
     if (direction) {
-      console.log(`Sending move: ${direction}`); // Debug log
       websocket.send(JSON.stringify({ action: "move", direction: direction }));
     }
+  });
+
+  let lastSent = 0;
+  const throttleMs = 50; // Send updates every 50ms
+
+  canvas.addEventListener("mousemove", (event) => {
+    const now = Date.now();
+    if (now - lastSent < throttleMs) return; // Skip if too soon
+    lastSent = now;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseY = event.clientY - rect.top;
+    const scaleY = canvas.height / 600;
+    const gameY = mouseY / scaleY;
+    const paddleHeight = 100;
+    const paddleY = gameY - paddleHeight / 2;
+
+    websocket.send(
+      JSON.stringify({
+        action: "move",
+        y: paddleY,
+      })
+    );
   });
 
   gameIdDisplay.addEventListener("click", () => {
